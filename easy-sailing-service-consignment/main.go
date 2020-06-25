@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	// Import generated protobuf code
-	pb "github.com/PFurtak/easy-sailing/tree/dev/easy-sailing-service-consignment/proto/consignment"
+	pb "github.com/PFurtak/easy-sailing/easy-sailing-service-consignment/proto/consignment"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -28,6 +30,7 @@ type Repository struct {
 func (repo *Repository) Create(consignment *pb.Consignment) (*pb.Consignment, error) {
 	repo.mu.Lock()
 	updated := append(repo.consignments, consignment)
+	repo.consignments = updated
 	repo.mu.Unlock()
 	return consignment, nil
 }
@@ -41,7 +44,7 @@ type service struct {
 
 //Create consignment - we defined just one method on this service, which is the create method.
 //This takes in a context and a request as an argument, and is handled by thr gRPC server.
-func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment) (pb.response, error) {
+func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment) (*pb.Response, error) {
 	//save consignment
 	consignment, err := s.repo.Create(req)
 
@@ -64,15 +67,15 @@ func main() {
 
 	s := grpc.NewServer()
 
-	// Register our service with the gRPC server, this will tie the implementation into the auto-generated 
+	// Register our service with the gRPC server, this will tie the implementation into the auto-generated
 	// interface code for our protobuf definitions.
-	pb.RegisterShippingServiceServer(s, %service{repo})
+	pb.RegisterShippingServiceServer(s, &service{repo})
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 
-	log.PrintIn("Running on port", port)
-	id err := s.Serve(lis); err != nil {
+	log.Println("Running on port", port)
+	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 
